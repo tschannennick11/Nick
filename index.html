@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Habits">
+<meta name="theme-color" content="#000000">
+<title>Daily Habits</title>
+<link rel="icon" href="t.png">
+<link rel="apple-touch-icon" href="t.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue: #0A84FF; --blue-light: rgba(10,132,255,0.15); --green: #30D158; --red: #FF453A;
+  --bg: #000000; --card: #1C1C1E; --text-primary: #FFFFFF; --text-secondary: rgba(235,235,245,0.6);
+  --text-tertiary: rgba(235,235,245,0.3); --separator: rgba(84,84,88,0.35);
+  --shadow: none;
+  --radius: 16px;
+  --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --active-press: rgba(255,255,255,0.05); --hover-bg: rgba(255,255,255,0.08);
+  --modal-overlay: rgba(0,0,0,0.5); --tab-bg: rgba(118,118,128,0.24);
+  --input-bg: rgba(118,118,128,0.24);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  background: var(--bg); color: var(--text-primary);
+  -webkit-font-smoothing: antialiased; min-height: 100dvh;
+  padding-bottom: calc(20px + var(--safe-bottom));
+  -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
+}
+
+.container { max-width: 500px; margin: 0 auto; padding: 0 16px; }
+
+/* Header */
+.header {
+  padding: calc(20px + var(--safe-top)) 0 12px; text-align: center;
+  position: sticky; top: 0; z-index: 100; background: var(--bg);
+}
+.header-date { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+.header-weekday { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
+.header-buttons { position: absolute; top: calc(20px + var(--safe-top)); right: 0; display: flex; gap: 8px; }
+.hdr-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--card);
+  box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1; transition: background 0.2s ease; -webkit-tap-highlight-color: transparent;
+}
+.hdr-btn:active { transform: scale(0.92); }
+
+/* Tab Switcher */
+.tab-bar { display: flex; background: var(--tab-bg); border-radius: 10px; padding: 2px; margin: 8px 0 4px; }
+.tab-btn {
+  flex: 1; padding: 8px 0; font-family: inherit; font-size: 13px; font-weight: 600;
+  border: none; background: none; color: var(--text-secondary); cursor: pointer;
+  border-radius: 8px; transition: color 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-btn.active { background: rgba(255,255,255,0.18); color: #FFFFFF; box-shadow: none; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* Progress Ring */
+.progress-section { display: flex; align-items: center; justify-content: center; padding: 20px 0 8px; gap: 16px; }
+.progress-ring-container { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+.progress-ring { transform: rotate(-90deg); width: 72px; height: 72px; }
+.progress-ring-bg { fill: none; stroke: var(--separator); stroke-width: 5; }
+.progress-ring-fill { fill: none; stroke: #FFFFFF; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1), stroke 0.3s ease; }
+.progress-ring-fill.complete { stroke: var(--green); }
+.progress-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.progress-info { text-align: left; }
+.progress-label { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.progress-sublabel { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Section */
+.section { margin-bottom: 20px; }
+.section-header { display: flex; align-items: center; gap: 6px; padding: 16px 16px 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+
+/* Habit Row */
+.habit-row { display: flex; align-items: center; padding: 14px 16px; gap: 14px; cursor: pointer; transition: background-color 0.15s ease; user-select: none; -webkit-user-select: none; }
+.habit-row:active { background-color: var(--active-press); }
+.habit-row + .habit-row { border-top: 0.5px solid var(--separator); }
+.habit-row.checked .habit-label { color: var(--text-tertiary); text-decoration: line-through; text-decoration-color: var(--text-tertiary); }
+
+/* Checkbox */
+.checkbox-container { width: 26px; height: 26px; flex-shrink: 0; }
+.checkbox-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(118,118,128,0.5); transition: all 0.2s cubic-bezier(0.4,0,0.2,1); display: flex; align-items: center; justify-content: center; background: transparent; }
+.habit-row.checked .checkbox-circle { border-color: var(--blue); background: var(--blue); }
+.checkmark-svg { width: 14px; height: 14px; opacity: 0; transform: scale(0.5); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+.habit-row.checked .checkmark-svg { opacity: 1; transform: scale(1); }
+.checkmark-path { fill: none; stroke: #FFFFFF; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 0.3s cubic-bezier(0.4,0,0.2,1) 0.05s; }
+.habit-row.checked .checkmark-path { stroke-dashoffset: 0; }
+.habit-label { font-size: 17px; font-weight: 400; color: var(--text-primary); transition: color 0.2s ease, text-decoration-color 0.2s ease; line-height: 1.3; }
+
+.reset-section { padding: 12px 0 40px; text-align: center; }
+.reset-btn { font-family: inherit; font-size: 15px; font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer; padding: 10px 20px; border-radius: 10px; }
+.reset-btn:active { background: var(--hover-bg); }
+
+/* Modals (shared) */
+.modal-overlay, .day-detail-overlay, .settings-overlay {
+  position: fixed; inset: 0; background: var(--modal-overlay);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 1000;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0 8px calc(20px + var(--safe-bottom));
+  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.modal-overlay.visible, .day-detail-overlay.visible, .settings-overlay.visible { opacity: 1; pointer-events: auto; }
+.modal-sheet { width: 100%; max-width: 400px; transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.modal-overlay.visible .modal-sheet, .day-detail-overlay.visible .day-detail-sheet, .settings-overlay.visible .settings-sheet { transform: translateY(0); }
+.modal-actions { background: var(--card); border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
+.modal-title { padding: 16px 16px 4px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: center; }
+.modal-message { padding: 4px 16px 16px; font-size: 13px; color: var(--text-secondary); text-align: center; }
+.modal-btn { display: block; width: 100%; padding: 16px; font-family: inherit; font-size: 20px; border: none; cursor: pointer; background: transparent; border-top: 0.5px solid var(--separator); }
+.modal-btn-destructive { color: #FF3B30; font-weight: 600; }
+.modal-btn-cancel { background: var(--card); border-radius: 14px; color: var(--blue); font-weight: 600; border: none; }
+
+@keyframes celebrate { 0% { transform: scale(1); } 50% { transform: scale(1.04); } 100% { transform: scale(1); } }
+.progress-ring-container.celebrate { animation: celebrate 0.5s cubic-bezier(0.4,0,0.2,1); }
+@keyframes tap { 0% { transform: scale(1); } 50% { transform: scale(0.97); } 100% { transform: scale(1); } }
+.habit-row.tapping { animation: tap 0.15s ease; }
+
+/* ── Weekly View ── */
+.weekly-score { text-align: center; padding: 20px 0 8px; }
+.weekly-score-value { font-size: 28px; font-weight: 700; color: var(--text-primary); }
+.weekly-score-label { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 16px 0; }
+.day-cell { display: flex; flex-direction: column; align-items: center; padding: 10px 4px 12px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); transition: transform 0.15s ease; cursor: default; }
+.day-cell.tappable { cursor: pointer; }
+.day-cell.tappable:active { transform: scale(0.96); }
+.day-cell.today { background: var(--blue); box-shadow: 0 2px 8px rgba(0,122,255,0.3); }
+.day-cell.future { opacity: 0.4; }
+.day-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+.day-cell.today .day-name { color: rgba(255,255,255,0.8); }
+.day-num { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.day-cell.today .day-num { color: #FFF; }
+.day-ring-container { position: relative; width: 36px; height: 36px; }
+.day-ring { transform: rotate(-90deg); width: 36px; height: 36px; }
+.day-ring-bg { fill: none; stroke: var(--separator); stroke-width: 3; }
+.day-cell.today .day-ring-bg { stroke: rgba(255,255,255,0.25); }
+.day-ring-fill { fill: none; stroke: var(--blue); stroke-width: 3; stroke-linecap: round; }
+.day-cell.today .day-ring-fill { stroke: #FFF; }
+.day-ring-fill.complete { stroke: var(--green); }
+.day-cell.today .day-ring-fill.complete { stroke: #FFF; }
+.day-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text-secondary); }
+.day-cell.today .day-pct { color: rgba(255,255,255,0.9); }
+.weekly-motivation { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 20px; text-align: center; }
+.weekly-motivation-text { font-size: 14px; color: var(--text-secondary); line-height: 1.4; }
+
+/* Day Detail Modal */
+.day-detail-sheet { width: 100%; max-width: 400px; max-height: 70vh; background: var(--card); border-radius: 14px; overflow: hidden; transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; }
+.day-detail-header { padding: 20px 20px 12px; text-align: center; border-bottom: 0.5px solid var(--separator); flex-shrink: 0; }
+.day-detail-title { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.day-detail-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.day-detail-body { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
+.day-detail-close { display: block; width: 100%; padding: 16px; font-family: inherit; font-size: 17px; font-weight: 600; color: var(--blue); background: none; border: none; border-top: 0.5px solid var(--separator); cursor: pointer; flex-shrink: 0; }
+.day-detail-close:active { background: var(--active-press); }
+.detail-section-label { padding: 12px 20px 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.detail-habit { display: flex; align-items: center; gap: 10px; padding: 10px 20px; }
+.detail-habit + .detail-habit { border-top: 0.5px solid var(--separator); }
+.detail-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+.detail-habit-name { font-size: 15px; color: var(--text-primary); }
+.detail-habit.missed .detail-habit-name { color: var(--text-tertiary); }
+
+/* ── Settings Overlay ── */
+.settings-overlay { align-items: stretch; padding: 0; }
+.settings-sheet {
+  width: 100%; height: 100%; background: var(--bg);
+  transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.settings-overlay.visible .settings-sheet { transform: translateY(0); }
+.settings-nav { display: flex; align-items: center; justify-content: space-between; padding: calc(16px + var(--safe-top)) 16px 12px; flex-shrink: 0; }
+.settings-nav-title { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.settings-nav-btn { font-family: inherit; font-size: 17px; font-weight: 600; color: var(--blue); background: none; border: none; cursor: pointer; padding: 4px 8px; }
+.settings-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 16px 40px; }
+.settings-section-label { padding: 20px 0 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+.settings-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 4px; }
+.settings-row { display: flex; align-items: center; padding: 12px 16px; gap: 12px; min-height: 48px; }
+.settings-row + .settings-row { border-top: 0.5px solid var(--separator); }
+.settings-row-label { flex: 1; font-size: 16px; color: var(--text-primary); }
+.settings-row-sub { font-size: 13px; color: var(--text-secondary); }
+.settings-input {
+  font-family: inherit; font-size: 16px; color: var(--text-primary);
+  background: var(--input-bg); border: none; border-radius: 8px; padding: 8px 10px;
+  flex: 1; min-width: 0; outline: none;
+}
+.settings-input:focus { box-shadow: 0 0 0 2px var(--blue); }
+.settings-input-sm { width: 70px; flex: none; text-align: center; }
+.settings-time-input {
+  font-family: inherit; font-size: 16px; color: var(--text-primary);
+  background: var(--input-bg); border: none; border-radius: 8px; padding: 8px 10px;
+  outline: none; width: 90px;
+}
+.settings-time-input:focus { box-shadow: 0 0 0 2px var(--blue); }
+.settings-delete { color: var(--red); font-size: 20px; cursor: pointer; padding: 0 4px; flex-shrink: 0; background: none; border: none; }
+.settings-delete:active { opacity: 0.5; }
+.settings-add-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 16px; font-family: inherit; font-size: 15px; font-weight: 500; color: var(--blue); background: none; border: none; cursor: pointer; width: 100%; }
+.settings-add-btn:active { background: var(--active-press); }
+.settings-danger-btn { display: block; width: 100%; padding: 14px; font-family: inherit; font-size: 17px; font-weight: 500; color: var(--red); background: var(--card); border: none; border-radius: var(--radius); box-shadow: var(--shadow); cursor: pointer; text-align: center; margin-top: 12px; }
+.settings-danger-btn:active { opacity: 0.7; }
+
+/* Toggle Switch */
+.toggle { position: relative; width: 51px; height: 31px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; background: var(--text-tertiary); border-radius: 16px;
+  transition: background 0.2s ease; cursor: pointer;
+}
+.toggle-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px;
+  background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+.toggle input:checked + .toggle-track { background: var(--green); }
+.toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-buttons">
+      <button class="hdr-btn" id="settingsBtn" aria-label="Settings">⠿</button>
+    </div>
+    <div class="header-date" id="headerDate"></div>
+    <div class="header-weekday" id="headerWeekday"></div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="today">Today</button>
+      <button class="tab-btn" data-tab="week">This Week</button>
+    </div>
+  </div>
+
+  <div class="view active" id="viewToday">
+    <div class="progress-section">
+      <div class="progress-ring-container" id="progressRing">
+        <svg class="progress-ring" viewBox="0 0 72 72">
+          <circle class="progress-ring-bg" cx="36" cy="36" r="30"/>
+          <circle class="progress-ring-fill" id="ringFill" cx="36" cy="36" r="30"/>
+        </svg>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+      <div class="progress-info">
+        <div class="progress-label" id="progressLabel">0 of 0 completed</div>
+        <div class="progress-sublabel" id="progressSublabel">Go get that shit.</div>
+      </div>
+    </div>
+    <div id="habitsContainer"></div>
+    <div class="reset-section"><button class="reset-btn" id="resetBtn">Reset day</button></div>
+  </div>
+
+  <div class="view" id="viewWeek">
+    <div class="weekly-score">
+      <div class="weekly-score-value" style="font-size:20px;font-weight:600;color:var(--text-primary);letter-spacing:0.3px;">Be confident.<br><span style="color:var(--text-secondary);">Remember who the fuck you are.</span></div>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+    <div class="weekly-motivation"><div class="weekly-motivation-text" id="weeklyMotivationText"></div></div>
+  </div>
+</div>
+
+<!-- Reset Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-sheet">
+    <div class="modal-actions">
+      <div class="modal-title" id="genericModalTitle">Reset Day</div>
+      <div class="modal-message" id="genericModalMsg">All checkmarks will be removed. Are you sure?</div>
+      <button class="modal-btn modal-btn-destructive" id="genericModalConfirm">Reset</button>
+    </div>
+    <button class="modal-btn modal-btn-cancel" id="genericModalCancel">Cancel</button>
+  </div>
+</div>
+
+<!-- Day Detail Modal -->
+<div class="day-detail-overlay" id="dayDetailOverlay">
+  <div class="day-detail-sheet">
+    <div class="day-detail-header">
+      <div class="day-detail-title" id="dayDetailTitle"></div>
+      <div class="day-detail-subtitle" id="dayDetailSubtitle"></div>
+    </div>
+    <div class="day-detail-body" id="dayDetailBody"></div>
+    <button class="day-detail-close" id="dayDetailClose">Done</button>
+  </div>
+</div>
+
+<!-- Settings Overlay -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-sheet">
+    <div class="settings-nav">
+      <div></div>
+      <div class="settings-nav-title">Settings</div>
+      <button class="settings-nav-btn" id="settingsDone">Done</button>
+    </div>
+    <div class="settings-body" id="settingsBody"></div>
+  </div>
+</div>
+
+<script>
+// ── PWA ──
+(function() {
+  const manifest = {
+    name: 'Daily Habits', short_name: 'Habits',
+    start_url: location.href.split('?')[0], display: 'standalone',
+    background_color: '#000000', theme_color: '#000000',
+    icons: [
+
+  { src: 't.png', sizes: '192x192', type: 'image/png' },
+
+  { src: 't.png', sizes: '512x512', type: 'image/png' }
+
+]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+  document.head.appendChild(link);
+
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE='habits-v2';
+      self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/habit-tracker.html'])).catch(()=>{}));self.skipWaiting();});
+      self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+      self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+  }
+})();
+
+// ── Haptic Feedback ──
+function haptic(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+// ── Constants ──
+const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const WEEKDAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ── Defaults ──
+const DEFAULT_TRAINING = {
+  1: { name: 'Chest + Shoulders', steps: '12k' },
+  2: { name: 'Back + Biceps', steps: '12k' },
+  3: { name: 'Legs', steps: '12k' },
+  4: { name: 'Upper Body (Calisthenics)', steps: '12k' },
+  5: { name: 'Rest Day', steps: '12k' },
+  6: { name: 'Rest Day', steps: '20k' },
+  0: { name: 'Cardio + Mobility', steps: '20k' },
+};
+const DEFAULT_MORNING = ['Wake up 06:00','Electrolyte shake','15 min bike','5 min abs','Ice-cold shower'];
+const DEFAULT_NUTRITION = ['Intermittent fasting 12:00–21:00','No bread','No sugar','No caffeine after 16:00','Protein in every meal','No pasta in the evening'];
+const DEFAULT_LIFESTYLE = ['No phone until you leave the house','No doomscrolling after 21:30','Sleep 23:00','Bad phase → journal'];
+
+const DEFAULT_NOTIFICATIONS = {
+  morning: { enabled: true, time: '06:00', label: 'Morning routine', body: 'Time to wake up. Start your morning routine.' },
+  evening: { enabled: true, time: '21:30', label: 'Evening wind-down', body: 'No doomscrolling. Put the phone down at 23:00.' },
+};
+
+// ── Config (localStorage-backed) ──
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem('habits-config')) || {}; } catch { return {}; }
+}
+function saveConfig(cfg) { localStorage.setItem('habits-config', JSON.stringify(cfg)); }
+
+function getTraining() {
+  const cfg = loadConfig();
+  if (cfg.training) return cfg.training;
+  return DEFAULT_TRAINING;
+}
+
+function getSection(key, defaults) {
+  const cfg = loadConfig();
+  return cfg[key] || [...defaults];
+}
+
+function getMorning() { return getSection('morning', DEFAULT_MORNING); }
+function getNutrition() { return getSection('nutrition', DEFAULT_NUTRITION); }
+function getLifestyle() { return getSection('lifestyle', DEFAULT_LIFESTYLE); }
+
+function getNotifConfig() {
+  const cfg = loadConfig();
+  if (cfg.notifications) return cfg.notifications;
+  return JSON.parse(JSON.stringify(DEFAULT_NOTIFICATIONS));
+}
+
+function getHabitsForDay(dayOfWeek) {
+  const t = getTraining()[dayOfWeek];
+  return [
+    { id: 'training', emoji: '', label: 'Training', items: [t.name, t.steps + ' Steps'] },
+    { id: 'morning', emoji: '', label: 'Morning Routine', items: getMorning() },
+    { id: 'nutrition', emoji: '', label: 'Nutrition', items: getNutrition() },
+    { id: 'lifestyle', emoji: '', label: 'Lifestyle', items: getLifestyle() },
+  ];
+}
+
+function getTodayHabits() { return getHabitsForDay(new Date().getDay()); }
+
+// ── State helpers ──
+function formatDateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function getDateKey() { return formatDateKey(new Date()); }
+function loadStateForDate(dk) { try { return JSON.parse(localStorage.getItem(`habits_${dk}`)) || {}; } catch { return {}; } }
+function loadState() { return loadStateForDate(getDateKey()); }
+function saveState(s) { localStorage.setItem(`habits_${getDateKey()}`, JSON.stringify(s)); }
+function stateKey(sid, i) { return `${sid}_${i}`; }
+
+function calcProgress(dk, dow) {
+  const state = loadStateForDate(dk), sections = getHabitsForDay(dow);
+  let total = 0, checked = 0;
+  sections.forEach(s => s.items.forEach((_, i) => { total++; if (state[stateKey(s.id, i)]) checked++; }));
+  return { total, checked, pct: total === 0 ? 0 : Math.round((checked / total) * 100) };
+}
+
+// ── Header ──
+function renderHeader() {
+  const now = new Date();
+  document.getElementById('headerDate').textContent = `${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  document.getElementById('headerWeekday').textContent = WEEKDAYS[now.getDay()];
+}
+
+// ── Today: Progress ──
+let prevPct = 0;
+function updateProgress() {
+  const { total, checked, pct } = calcProgress(getDateKey(), new Date().getDay());
+  const circumference = 2 * Math.PI * 30;
+  const offset = circumference - (pct / 100) * circumference;
+  const ringFill = document.getElementById('ringFill');
+  ringFill.style.strokeDasharray = circumference;
+  ringFill.style.strokeDashoffset = offset;
+  ringFill.classList.toggle('complete', pct === 100);
+  document.getElementById('progressText').textContent = `${pct}%`;
+  document.getElementById('progressLabel').textContent = `${checked} of ${total} completed`;
+  const sub = document.getElementById('progressSublabel');
+  sub.textContent = 'Go get that shit.';
+  if (pct === 100) {
+    if (prevPct < 100) {
+      const ring = document.getElementById('progressRing');
+      ring.classList.add('celebrate');
+      setTimeout(() => ring.classList.remove('celebrate'), 600);
+      haptic([50, 30, 50, 30, 100]);
+    }
+  }
+  prevPct = pct;
+}
+
+// ── Today: Habits ──
+function renderHabits() {
+  const container = document.getElementById('habitsContainer');
+  container.innerHTML = '';
+  const sections = getTodayHabits();
+  const state = loadState();
+
+  sections.forEach(section => {
+    const sEl = document.createElement('div'); sEl.className = 'section';
+    const hdr = document.createElement('div'); hdr.className = 'section-header';
+    hdr.innerHTML = `<span style="font-size:15px">${section.emoji}</span> ${section.label}`;
+    sEl.appendChild(hdr);
+    const card = document.createElement('div'); card.className = 'card';
+
+    section.items.forEach((item, i) => {
+      const key = stateKey(section.id, i);
+      const isChecked = !!state[key];
+      const row = document.createElement('div');
+      row.className = `habit-row${isChecked ? ' checked' : ''}`;
+      row.innerHTML = `<div class="checkbox-container"><div class="checkbox-circle"><svg class="checkmark-svg" viewBox="0 0 16 16"><path class="checkmark-path" d="M3.5 8.5L6.5 11.5L12.5 4.5"/></svg></div></div><span class="habit-label">${item}</span>`;
+
+      row.addEventListener('click', () => {
+        row.classList.add('tapping');
+        setTimeout(() => row.classList.remove('tapping'), 150);
+        const cur = loadState();
+        const wasChecked = !!cur[key];
+        cur[key] = !wasChecked;
+        saveState(cur);
+        row.classList.toggle('checked');
+        haptic(wasChecked ? [30] : [10, 50, 10]);
+        updateProgress();
+      });
+      card.appendChild(row);
+    });
+    sEl.appendChild(card); container.appendChild(sEl);
+  });
+}
+
+// ── Weekly View ──
+function getWeekDays() {
+  const today = new Date(), dow = today.getDay();
+  const mon = new Date(today); mon.setDate(today.getDate() - ((dow + 6) % 7)); mon.setHours(0,0,0,0);
+  return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
+}
+
+function renderWeeklyView() {
+  const grid = document.getElementById('weekGrid'); grid.innerHTML = '';
+  const days = getWeekDays(), todayKey = getDateKey();
+  let goodDays = 0, pastDays = 0;
+
+  days.forEach(d => {
+    const dk = formatDateKey(d), isToday = dk === todayKey;
+    const isFuture = d > new Date() && !isToday, isPast = !isToday && !isFuture;
+    const { pct } = calcProgress(dk, d.getDay());
+    if (!isFuture) pastDays++;
+    if (!isFuture && pct >= 80) goodDays++;
+
+    const cell = document.createElement('div'); cell.className = 'day-cell';
+    if (isToday) cell.classList.add('today');
+    if (isFuture) cell.classList.add('future');
+    if (isPast) cell.classList.add('tappable');
+
+    const circ = 2 * Math.PI * 14, off = circ - (pct / 100) * circ;
+    cell.innerHTML = `<div class="day-name">${WEEKDAYS_SHORT[d.getDay()]}</div><div class="day-num">${d.getDate()}</div><div class="day-ring-container"><svg class="day-ring" viewBox="0 0 36 36"><circle class="day-ring-bg" cx="18" cy="18" r="14"/><circle class="day-ring-fill${pct===100?' complete':''}" cx="18" cy="18" r="14" stroke-dasharray="${circ}" stroke-dashoffset="${off}"/></svg><div class="day-pct">${isFuture?'–':pct+'%'}</div></div>`;
+    if (isPast) cell.addEventListener('click', () => openDayDetail(d));
+    grid.appendChild(cell);
+  });
+
+  // weekly score line removed — static "Be confident.<br><span style="color:var(--text-secondary);">Remember who the fuck you are.</span>" text is in HTML
+  const mt = document.getElementById('weeklyMotivationText');
+  if (pastDays === 0) mt.textContent = 'A new week begins — make it count!';
+  else if (goodDays === pastDays) mt.textContent = 'Flawless so far — keep the streak alive!';
+  else if (goodDays >= pastDays * 0.7) mt.textContent = 'Strong week! Stay consistent and finish strong.';
+  else mt.textContent = 'Taking things as they are… one day at a time.';
+}
+
+// ── Day Detail Modal ──
+function openDayDetail(date) {
+  const dk = formatDateKey(date), state = loadStateForDate(dk), sections = getHabitsForDay(date.getDay());
+  const { checked, total, pct } = calcProgress(dk, date.getDay());
+  document.getElementById('dayDetailTitle').textContent = `${WEEKDAYS[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+  document.getElementById('dayDetailSubtitle').textContent = `${checked} of ${total} completed (${pct}%)`;
+  const body = document.getElementById('dayDetailBody'); body.innerHTML = '';
+  sections.forEach(s => {
+    const lbl = document.createElement('div'); lbl.className = 'detail-section-label'; lbl.textContent = `${s.emoji} ${s.label}`; body.appendChild(lbl);
+    s.items.forEach((item, i) => {
+      const done = !!state[stateKey(s.id, i)];
+      const r = document.createElement('div'); r.className = `detail-habit${done ? '' : ' missed'}`;
+      r.innerHTML = `<div class="detail-icon">${done ? '✅' : '⬜'}</div><div class="detail-habit-name">${item}</div>`;
+      body.appendChild(r);
+    });
+  });
+  document.getElementById('dayDetailOverlay').classList.add('visible');
+}
+document.getElementById('dayDetailClose').addEventListener('click', () => document.getElementById('dayDetailOverlay').classList.remove('visible'));
+document.getElementById('dayDetailOverlay').addEventListener('click', e => { if (e.target.id === 'dayDetailOverlay') e.target.classList.remove('visible'); });
+
+// ── Tabs ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(btn.dataset.tab === 'today' ? 'viewToday' : 'viewWeek').classList.add('active');
+    if (btn.dataset.tab === 'week') renderWeeklyView();
+  });
+});
+
+// ── Generic confirm modal ──
+let modalConfirmFn = null;
+const modalOvl = document.getElementById('modalOverlay');
+function showConfirm(title, msg, confirmText, fn) {
+  document.getElementById('genericModalTitle').textContent = title;
+  document.getElementById('genericModalMsg').textContent = msg;
+  document.getElementById('genericModalConfirm').textContent = confirmText;
+  modalConfirmFn = fn;
+  modalOvl.classList.add('visible');
+}
+document.getElementById('genericModalCancel').addEventListener('click', () => modalOvl.classList.remove('visible'));
+modalOvl.addEventListener('click', e => { if (e.target === modalOvl) modalOvl.classList.remove('visible'); });
+document.getElementById('genericModalConfirm').addEventListener('click', () => { modalOvl.classList.remove('visible'); if (modalConfirmFn) modalConfirmFn(); });
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  showConfirm('Reset Day', 'All checkmarks will be removed. Are you sure?', 'Reset', () => {
+    localStorage.removeItem(`habits_${getDateKey()}`);
+    prevPct = 0;
+    renderHabits(); updateProgress();
+  });
+});
+
+// ══════════════════════════════════════════════
+// ── SETTINGS VIEW ──
+// ══════════════════════════════════════════════
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsDone').addEventListener('click', closeSettings);
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('visible');
+  renderHabits(); updateProgress();
+}
+
+function openSettings() {
+  const body = document.getElementById('settingsBody'); body.innerHTML = '';
+  const cfg = loadConfig();
+
+  // ── Training section ──
+  addLabel(body, 'Training Schedule');
+  const tCard = addCard(body);
+  const training = getTraining();
+  [1,2,3,4,5,6,0].forEach(dow => {
+    const t = training[dow];
+    const row = document.createElement('div'); row.className = 'settings-row';
+    row.style.flexWrap = 'wrap'; row.style.gap = '8px';
+    row.innerHTML = `
+      <div style="width:100%;font-size:13px;font-weight:600;color:var(--text-secondary)">${WEEKDAYS[dow]}</div>
+      <input class="settings-input" value="${esc(t.name)}" data-dow="${dow}" data-field="name" placeholder="Workout name">
+      <input class="settings-input settings-input-sm" value="${esc(t.steps)}" data-dow="${dow}" data-field="steps" placeholder="Steps">
+      <span style="font-size:13px;color:var(--text-secondary)">Steps</span>
+    `;
+    tCard.appendChild(row);
+  });
+  tCard.addEventListener('input', e => {
+    if (!e.target.dataset.dow) return;
+    const t = getTraining();
+    t[e.target.dataset.dow][e.target.dataset.field] = e.target.value;
+    const c = loadConfig(); c.training = t; saveConfig(c);
+  });
+
+  // Editable sections
+  buildEditableSection(body, 'Morning Routine', 'morning', getMorning());
+  buildEditableSection(body, 'Nutrition', 'nutrition', getNutrition());
+  buildEditableSection(body, 'Lifestyle', 'lifestyle', getLifestyle());
+
+  // ── Notifications section ──
+  addLabel(body, 'Notifications');
+  const nCard = addCard(body);
+  const notifs = getNotifConfig();
+
+  Object.keys(notifs).forEach(key => {
+    const n = notifs[key];
+    const row = document.createElement('div'); row.className = 'settings-row'; row.style.flexWrap = 'wrap'; row.style.gap = '8px';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;width:100%;gap:12px">
+        <input class="settings-input" value="${esc(n.label)}" data-notif-label="${key}" placeholder="Title" style="flex:1;font-weight:600;">
+        <label class="toggle"><input type="checkbox" ${n.enabled ? 'checked' : ''} data-notif="${key}"><span class="toggle-track"></span></label>
+      </div>
+      <input type="time" class="settings-time-input" value="${n.time}" data-notif-time="${key}">
+      <input class="settings-input" value="${esc(n.body)}" data-notif-body="${key}" placeholder="Notification text" style="flex:1;font-size:14px;">
+    `;
+    nCard.appendChild(row);
+  });
+
+  nCard.addEventListener('change', e => {
+    const ns = getNotifConfig();
+    if (e.target.dataset.notif) {
+      ns[e.target.dataset.notif].enabled = e.target.checked;
+      if (e.target.checked) requestNotifPermission();
+    }
+    if (e.target.dataset.notifTime) {
+      ns[e.target.dataset.notifTime].time = e.target.value;
+    }
+    const c = loadConfig(); c.notifications = ns; saveConfig(c);
+    scheduleNotifications();
+  });
+
+  nCard.addEventListener('input', e => {
+    const ns = getNotifConfig();
+    if (e.target.dataset.notifLabel) {
+      ns[e.target.dataset.notifLabel].label = e.target.value;
+    }
+    if (e.target.dataset.notifBody) {
+      ns[e.target.dataset.notifBody].body = e.target.value;
+    }
+    const c = loadConfig(); c.notifications = ns; saveConfig(c);
+  });
+
+  // ── Reset to defaults ──
+  addLabel(body, '');
+  const dangerBtn = document.createElement('button'); dangerBtn.className = 'settings-danger-btn';
+  dangerBtn.textContent = 'Reset to defaults';
+  dangerBtn.addEventListener('click', () => {
+    showConfirm('Reset to Defaults', 'All custom habits and settings will be restored to defaults.', 'Reset', () => {
+      localStorage.removeItem('habits-config');
+      openSettings();
+    });
+  });
+  body.appendChild(dangerBtn);
+
+  document.getElementById('settingsOverlay').classList.add('visible');
+}
+
+function buildEditableSection(parent, title, key, items) {
+  addLabel(parent, title);
+  const card = addCard(parent);
+
+  function rebuild() {
+    card.innerHTML = '';
+    const current = getSection(key, items);
+    current.forEach((item, i) => {
+      const row = document.createElement('div'); row.className = 'settings-row';
+      const inp = document.createElement('input'); inp.className = 'settings-input'; inp.value = item;
+      inp.addEventListener('input', () => {
+        const c = loadConfig(); const arr = c[key] || [...items]; arr[i] = inp.value; c[key] = arr; saveConfig(c);
+      });
+      const del = document.createElement('button'); del.className = 'settings-delete'; del.textContent = '×';
+      del.addEventListener('click', () => {
+        const c = loadConfig(); const arr = c[key] || [...items]; arr.splice(i, 1); c[key] = arr; saveConfig(c); rebuild();
+      });
+      row.appendChild(inp); row.appendChild(del); card.appendChild(row);
+    });
+
+    const addBtn = document.createElement('button'); addBtn.className = 'settings-add-btn';
+    addBtn.innerHTML = '<span style="font-size:18px">+</span> Add habit';
+    addBtn.addEventListener('click', () => {
+      const c = loadConfig(); const arr = c[key] || [...items]; arr.push('New habit'); c[key] = arr; saveConfig(c); rebuild();
+    });
+    card.appendChild(addBtn);
+  }
+  rebuild();
+}
+
+function addLabel(parent, text) {
+  const el = document.createElement('div'); el.className = 'settings-section-label'; el.textContent = text; parent.appendChild(el);
+}
+function addCard(parent) {
+  const el = document.createElement('div'); el.className = 'settings-card'; parent.appendChild(el); return el;
+}
+function esc(s) { return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+// ══════════════════════════════════════════════
+// ── NOTIFICATIONS ──
+// ══════════════════════════════════════════════
+let notifTimers = [];
+
+function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function scheduleNotifications() {
+  notifTimers.forEach(t => clearTimeout(t));
+  notifTimers = [];
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const ns = getNotifConfig();
+  const now = new Date();
+
+  Object.values(ns).forEach(n => {
+    if (!n.enabled) return;
+    const [h, m] = n.time.split(':').map(Number);
+    const target = new Date(now); target.setHours(h, m, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const ms = target - now;
+    if (ms < 86400000) {
+      notifTimers.push(setTimeout(() => {
+        new Notification(n.label, { body: n.body, icon: '' });
+        scheduleNotifications();
+      }, ms));
+    }
+  });
+}
+
+// Ask for permission after a short delay on first launch
+setTimeout(() => {
+  if (!localStorage.getItem('habits-notif-asked')) {
+    localStorage.setItem('habits-notif-asked', '1');
+    requestNotifPermission();
+  }
+}, 3000);
+
+scheduleNotifications();
+if ('Notification' in window && Notification.permission === 'granted') scheduleNotifications();
+
+// Re-schedule when page becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) scheduleNotifications();
+});
+
+// ── Init ──
+renderHeader(); renderHabits(); updateProgress();
+</script>
+</body>
+</html>
